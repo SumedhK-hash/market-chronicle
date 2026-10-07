@@ -44,7 +44,7 @@ def is_recent(ts: float) -> bool:
 FILTER_ON = True
 FINANCE_TERMS = [
     r"stocks?", r"shares?", r"markets?", r"sensex", r"nifty", r"equit(?:y|ies)",
-    r"bonds?", r"yields?", r"treasur(?:y|ies)", r"fed", r"federal reserve",
+    r"bonds?", r"yields?", r"treasur(?:y|ies)", r"fed(?!\s+up)", r"federal reserve",
     r"rbi", r"central bank\w*", r"ecb", r"boe", r"boj", r"mpc", r"repo",
     r"rates?", r"interest", r"inflation", r"cpi", r"gdp", r"econom\w*",
     r"recession", r"tariffs?", r"trade deficit", r"currenc(?:y|ies)", r"rupee",
