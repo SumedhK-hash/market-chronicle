@@ -31,11 +31,43 @@ def when(ts: float) -> str:
     return dt.datetime.fromtimestamp(ts).strftime("%d %b, %H:%M")
 
 
-def story(it: dict, with_summary: bool = True, lines: int = 3) -> str:
+# ---- Sectors ---------------------------------------------------------------
+# name -> words that tag a story with that sector. Edit freely.
+SECTORS = {
+    "Banking & Finance": [r"bank\w*", r"nbfc", r"loans?", r"lending", r"insur\w*", r"mutual funds?", r"fintech", r"hdfc", r"icici", r"sbi", r"kotak", r"credit"],
+    "IT & Tech": [r"software", r"tcs", r"infosys", r"wipro", r"hcl\w*", r"tech mahindra", r"it services", r"it stocks?", r"it sector", r"it shares?", r"tech\w*", r"semiconductors?", r"chips?", r"nvidia", r"microsoft", r"alphabet", r"google", r"artificial intelligence", r"cloud"],
+    "Pharma & Health": [r"pharma\w*", r"drugs?", r"health\w*", r"hospitals?", r"biotech", r"vaccines?", r"cipla", r"lupin", r"fda"],
+    "Auto": [r"auto\w*", r"cars?", r"vehicles?", r"evs?", r"maruti", r"tata motors", r"mahindra", r"tesla", r"two-wheelers?", r"tyres?", r"ashok leyland"],
+    "Energy": [r"oil", r"crude", r"brent", r"gas", r"opec", r"refin\w*", r"petrol\w*", r"diesel", r"power", r"solar", r"renewables?", r"coal", r"energy", r"ongc", r"reliance", r"nuclear"],
+    "Metals & Mining": [r"steel", r"metals?", r"alumin(?:i)?um", r"copper", r"iron ore", r"mining", r"zinc", r"jsw", r"vedanta", r"hindalco"],
+    "FMCG & Consumer": [r"fmcg", r"consumer\w*", r"retail\w*", r"nestle", r"dabur", r"britannia", r"food", r"beverages?", r"e-?commerce", r"zomato", r"swiggy", r"restaurants?"],
+    "Infra & Real Estate": [r"infra\w*", r"real estate", r"realty", r"housing", r"cement", r"construction", r"larsen", r"railways?", r"ports?", r"airports?", r"dlf", r"propert(?:y|ies)"],
+    "Telecom": [r"telecom\w*", r"jio", r"airtel", r"vodafone", r"bharti", r"5g", r"spectrum", r"satellites?"],
+    "Economy & Policy": [r"gdp", r"inflation", r"cpi", r"wpi", r"rbi", r"fed", r"federal reserve", r"central bank\w*", r"repo", r"interest rates?", r"rate (?:hikes?|cuts?)", r"fiscal", r"budget", r"tax\w*", r"gst", r"imf", r"world bank", r"tariffs?", r"trade deficit", r"unemployment", r"payrolls?", r"pmi", r"econom\w*", r"recession", r"ecb", r"boj", r"boe", r"mpc"],
+    "IPOs": [r"ipos?", r"listing", r"gmp", r"price band", r"subscription"],
+    "Currency & Crypto": [r"rupee", r"dollar", r"euro", r"yen", r"forex", r"fx", r"currenc\w*", r"crypto\w*", r"bitcoin", r"ethereum", r"stablecoins?"],
+    "Gold & Commodities": [r"gold", r"silver", r"commodit\w*"],
+}
+SECTOR_RE = {
+    name: re.compile(r"\b(?:" + "|".join(terms) + r")\b", re.IGNORECASE)
+    for name, terms in SECTORS.items()
+}
+
+
+def slug(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+def tag_sectors(it: dict) -> list[str]:
+    text = f'{it.get("headline", "")} {it.get("summary", "")}'
+    return [slug(n) for n, rx in SECTOR_RE.items() if rx.search(text)]
+
+
+def story(it: dict, with_summary: bool = True, lines: int = 3, extra: bool = False) -> str:
     summ = clean(it.get("summary", ""))
     body = f'<p class="sum l{lines}">{summ}</p>' if (with_summary and summ) else ""
     return (
-        '<article class="story">'
+        f'<article class="story{" extra" if extra else ""}" data-sec="{" ".join(tag_sectors(it))}">'
         f'<h3><a href="{html.escape(it["url"])}" target="_blank" rel="noopener">'
         f'{html.escape(it["headline"])}</a></h3>'
         f'{body}'
@@ -136,11 +168,58 @@ td.sym { font-weight:500; color:var(--accent); }
 td.num, th.num { text-align:right; }
 .note { font-size:.8rem; color:var(--muted); margin-top:10px; }
 
+[hidden] { display:none !important; }
+.filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:20px 0 0; }
+.flabel { font-family:"IBM Plex Mono", monospace; font-size:.75rem; color:var(--muted); margin-right:4px; }
+.chip { font:inherit; font-size:.85rem; color:var(--ink); background:var(--panel);
+  border:1px solid var(--hair); border-radius:999px; padding:5px 12px; cursor:pointer; }
+.chip span { font-family:"IBM Plex Mono", monospace; font-size:.72rem; color:var(--muted); margin-left:4px; }
+.chip:hover { border-color:var(--accent); }
+.chip[aria-pressed="true"] { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+.chip[aria-pressed="true"] span { color:var(--on-accent); }
+.chip.clear { border-style:dashed; color:var(--muted); }
+.empty { color:var(--muted); font-style:italic; padding:14px 0; }
 @media (max-width:900px) {
   .grid { grid-template-columns:1fr; }
   .col { padding:0; border-left:0; margin-bottom:28px; }
   .col:last-child { position:static; }
 }
+"""
+
+JS_FILTER = """
+(function () {
+  var chips = document.querySelectorAll(".chip[data-s]");
+  var clear = document.querySelector(".chip.clear");
+  var sel = [];
+  function apply() {
+    document.querySelectorAll("[data-sec]").forEach(function (el) {
+      var secs = el.getAttribute("data-sec").split(" ");
+      var show = sel.length
+        ? sel.some(function (x) { return secs.indexOf(x) > -1; })
+        : !el.classList.contains("extra");
+      el.hidden = !show;
+    });
+    document.querySelectorAll(".col").forEach(function (col) {
+      var note = col.querySelector(".empty");
+      if (!note) return;
+      var visible = col.querySelectorAll("[data-sec]:not([hidden])").length;
+      note.hidden = visible > 0;
+    });
+    chips.forEach(function (c) {
+      c.setAttribute("aria-pressed", sel.indexOf(c.dataset.s) > -1);
+    });
+    clear.hidden = !sel.length;
+  }
+  chips.forEach(function (c) {
+    c.addEventListener("click", function () {
+      var i = sel.indexOf(c.dataset.s);
+      if (i > -1) sel.splice(i, 1); else sel.push(c.dataset.s);
+      apply();
+    });
+  });
+  clear.addEventListener("click", function () { sel = []; apply(); });
+  apply();
+})();
 """
 
 
@@ -163,13 +242,23 @@ def main() -> None:
         deck_key = re.sub(r"\W+", "", html.unescape(deck).lower())[:40]
         deck_html = "" if head_key == deck_key else f'<p class="deck">{deck}</p>'
         lead_html = (
-            '<section class="lead">'
+            f'<section class="lead" data-sec="{" ".join(tag_sectors(lead))}">'
             f'<h2><a href="{html.escape(lead["url"])}" target="_blank" rel="noopener">'
             f'{html.escape(lead["headline"])}</a></h2>'
             f'{deck_html}'
             f'<p class="meta">{html.escape(lead["source"])}, {when(lead["ts"])}</p>'
             "</section>"
         )
+
+    counts = {slug(n): 0 for n in SECTORS}
+    for it in list(g) + list(i):
+        for sl in tag_sectors(it):
+            counts[sl] += 1
+    chips = "".join(
+        f'<button class="chip" data-s="{slug(n)}" aria-pressed="false">'
+        f'{html.escape(n)} <span>{counts[slug(n)]}</span></button>'
+        for n in SECTORS if counts[slug(n)] > 0
+    )
 
     swatches = {
         "chronicle": "#B8860B", "midnight": "#F0B429", "harbour": "#0A6FD1",
@@ -207,16 +296,22 @@ try {{ var s = localStorage.getItem("paper-theme");
 </header>
 
 <main class="wrap">
+  <nav class="filters" aria-label="Filter by sector">
+    <span class="flabel">Sectors</span>{chips}
+    <button class="chip clear" hidden>Clear</button>
+  </nav>
   <div class="grid">
     <div class="col">
       <h2 class="sec">Global finance and economy</h2>
       {lead_html}
       {"".join(story(x, lines=2) for x in g_rest)}
+      <p class="empty" hidden>No stories in the selected sectors today.</p>
     </div>
 
     <div class="col">
       <h2 class="sec">India: finance and economy</h2>
-      {"".join(story(x, lines=3) for x in i[:INDIA_MAX])}
+      {"".join(story(x, lines=3, extra=(n >= INDIA_MAX)) for n, x in enumerate(i))}
+      <p class="empty" hidden>No stories in the selected sectors today.</p>
     </div>
 
     <div class="col">
@@ -247,6 +342,7 @@ try {{ var s = localStorage.getItem("paper-theme");
   mark();
 }})();
 </script>
+<script>{JS_FILTER}</script>
 </body>
 </html>"""
 
