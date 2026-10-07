@@ -14,7 +14,7 @@ import html
 import datetime as dt
 
 PAPER_NAME = "The Market Chronicle"      # rename to whatever you like
-TAGLINE = "Daily morning briefing: global markets, India and earnings"
+TAGLINE = "Daily morning briefing: global markets, India and currencies"
 INDIA_MAX = 9                        # stories shown in the India column
 DEFAULT_THEME = "chronicle"          # chronicle | midnight | harbour | rosewood | forest
 
@@ -43,7 +43,7 @@ SECTORS = {
     "FMCG & Consumer": [r"fmcg", r"consumer\w*", r"retail\w*", r"nestle", r"dabur", r"britannia", r"food", r"beverages?", r"e-?commerce", r"zomato", r"swiggy", r"restaurants?"],
     "Infra & Real Estate": [r"infra\w*", r"real estate", r"realty", r"housing", r"cement", r"construction", r"larsen", r"railways?", r"ports?", r"airports?", r"dlf", r"propert(?:y|ies)"],
     "Telecom": [r"telecom\w*", r"jio", r"airtel", r"vodafone", r"bharti", r"5g", r"spectrum", r"satellites?"],
-    "Economy & Policy": [r"gdp", r"inflation", r"cpi", r"wpi", r"rbi", r"fed", r"federal reserve", r"central bank\w*", r"repo", r"interest rates?", r"rate (?:hikes?|cuts?)", r"fiscal", r"budget", r"tax\w*", r"gst", r"imf", r"world bank", r"tariffs?", r"trade deficit", r"unemployment", r"payrolls?", r"pmi", r"econom\w*", r"recession", r"ecb", r"boj", r"boe", r"mpc"],
+    "Economy & Policy": [r"gdp", r"inflation", r"cpi", r"wpi", r"rbi", r"fed(?!\s+up)", r"federal reserve", r"central bank\w*", r"repo", r"interest rates?", r"rate (?:hikes?|cuts?)", r"fiscal", r"budget", r"tax\w*", r"gst", r"imf", r"world bank", r"tariffs?", r"trade deficit", r"unemployment", r"payrolls?", r"pmi", r"econom\w*", r"recession", r"ecb", r"boj", r"boe", r"mpc"],
     "IPOs": [r"ipos?", r"listing", r"gmp", r"price band", r"subscription"],
     "Currency & Crypto": [r"rupee", r"dollar", r"euro", r"yen", r"forex", r"fx", r"currenc\w*", r"crypto\w*", r"bitcoin", r"ethereum", r"stablecoins?"],
     "Gold & Commodities": [r"gold", r"silver", r"commodit\w*"],
@@ -65,6 +65,10 @@ def tag_sectors(it: dict) -> list[str]:
 
 def story(it: dict, with_summary: bool = True, lines: int = 3, extra: bool = False) -> str:
     summ = clean(it.get("summary", ""))
+    _hk = re.sub(r"\W+", "", it["headline"].lower())[:40]
+    _sk = re.sub(r"\W+", "", html.unescape(summ).lower())[:40]
+    if _hk == _sk:          # summary only repeats the headline: skip it
+        summ = ""
     body = f'<p class="sum l{lines}">{summ}</p>' if (with_summary and summ) else ""
     return (
         f'<article class="story{" extra" if extra else ""}" data-sec="{" ".join(tag_sectors(it))}">'
