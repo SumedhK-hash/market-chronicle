@@ -45,6 +45,7 @@ SECTORS = {
     "Infra & Real Estate": [r"infra\w*", r"real estate", r"realty", r"housing", r"cement", r"construction", r"larsen", r"railways?", r"ports?", r"airports?", r"dlf", r"propert(?:y|ies)"],
     "Telecom": [r"telecom\w*", r"jio", r"airtel", r"vodafone", r"bharti", r"5g", r"spectrum", r"satellites?"],
     "Economy & Policy": [r"gdp", r"inflation", r"cpi", r"wpi", r"rbi", r"fed(?!\s+up)", r"federal reserve", r"central bank\w*", r"repo", r"interest rates?", r"rate (?:hikes?|cuts?)", r"fiscal", r"budget", r"tax\w*", r"gst", r"imf", r"world bank", r"tariffs?", r"trade deficit", r"unemployment", r"payrolls?", r"pmi", r"econom\w*", r"recession", r"ecb", r"boj", r"boe", r"mpc"],
+    "Fixed Income & Bonds": [r"bonds?", r"fixed income", r"g-?secs?", r"gilts?", r"treasur(?:y|ies)", r"(?<!dividend )yields?", r"debentures?", r"ncds?", r"corporate bonds?", r"credit rating", r"t-bills?", r"sovereign", r"coupon", r"debt market", r"bunds?", r"jgbs?", r"sukuk", r"money market"],
     "IPOs": [r"ipos?", r"listing", r"gmp", r"price band", r"subscription"],
     "Currency & Crypto": [r"rupee", r"dollar", r"euro", r"yen", r"forex", r"fx", r"currenc\w*", r"crypto\w*", r"bitcoin", r"ethereum", r"stablecoins?"],
     "Gold & Commodities": [r"gold", r"silver", r"commodit\w*"],
@@ -192,6 +193,7 @@ footer { max-width:1180px; margin:0 auto; padding:18px 20px 36px; border-top:1px
 .chip[aria-pressed="true"] { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
 .chip[aria-pressed="true"] span { color:var(--on-accent); }
 .chip.clear { border-style:dashed; color:var(--muted); }
+.chip.zero { opacity:.55; }
 .empty { color:var(--muted); font-style:italic; padding:14px 0; }
 @media (max-width:900px) {
   .grid { grid-template-columns:1fr; }
@@ -269,9 +271,9 @@ def main() -> None:
         for sl in tag_sectors(it):
             counts[sl] += 1
     chips = "".join(
-        f'<button class="chip" data-s="{slug(n)}" aria-pressed="false">'
+        f'<button class="chip{" zero" if counts[slug(n)] == 0 else ""}" data-s="{slug(n)}" aria-pressed="false">'
         f'{html.escape(n)} <span>{counts[slug(n)]}</span></button>'
-        for n in SECTORS if counts[slug(n)] > 0
+        for n in SECTORS
     )
 
     swatches = {
