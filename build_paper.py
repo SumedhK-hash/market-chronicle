@@ -15,6 +15,7 @@ import datetime as dt
 
 PAPER_NAME = "The Market Chronicle"      # rename to whatever you like
 TAGLINE = "Daily morning briefing: global markets, India and currencies"
+OWNER_NAME = "Sumedh Kagwade"          # shown as watermark and byline
 INDIA_MAX = 9                        # stories shown in the India column
 DEFAULT_THEME = "chronicle"          # chronicle | midnight | harbour | rosewood | forest
 
@@ -173,6 +174,15 @@ td.num, th.num { text-align:right; }
 .note { font-size:.8rem; color:var(--muted); margin-top:10px; }
 
 [hidden] { display:none !important; }
+.wm { position:fixed; inset:0; display:grid; place-items:center; z-index:0; pointer-events:none;
+  user-select:none; overflow:hidden; font-family:"Fraunces", Georgia, serif; font-weight:800;
+  font-size:clamp(3rem, 11vw, 10rem); white-space:nowrap; color:var(--ink); opacity:.06;
+  transform:rotate(-24deg); }
+.band, main, footer { position:relative; z-index:1; }
+.by { text-align:center; font-family:"IBM Plex Mono", monospace; font-size:.75rem;
+  letter-spacing:.14em; text-transform:uppercase; opacity:.75; margin:0; padding-bottom:18px; }
+footer { max-width:1180px; margin:0 auto; padding:18px 20px 36px; border-top:1px solid var(--hair);
+  font-family:"IBM Plex Mono", monospace; font-size:.74rem; color:var(--muted); text-align:center; }
 .filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:20px 0 0; }
 .flabel { font-family:"IBM Plex Mono", monospace; font-size:.75rem; color:var(--muted); margin-right:4px; }
 .chip { font:inherit; font-size:.85rem; color:var(--ink); background:var(--panel);
@@ -290,12 +300,14 @@ try {{ var s = localStorage.getItem("paper-theme");
 </script>
 </head>
 <body>
+<div class="wm" aria-hidden="true">{OWNER_NAME}</div>
 <header class="band">
   <div class="wrap">
     <div class="top"><span>{today}</span><span>Updated {built}</span>
       <span class="themes" role="group" aria-label="Colour theme">{buttons}</span></div>
     <h1>{PAPER_NAME}</h1>
     <p class="tag">{TAGLINE}</p>
+    <p class="by">Curated by {OWNER_NAME}</p>
   </div>
 </header>
 
@@ -328,6 +340,7 @@ try {{ var s = localStorage.getItem("paper-theme");
     </div>
   </div>
 </main>
+<footer>Curated by {OWNER_NAME} &middot; Sources: Finnhub, Economic Times, Mint, Moneycontrol &middot; For personal reading</footer>
 
 <script>
 (function () {{
