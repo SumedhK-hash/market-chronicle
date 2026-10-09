@@ -56,7 +56,7 @@ FINANCE_TERMS = [
     r"nasdaq", r"s&p", r"dow", r"ftse", r"nikkei", r"hang seng", r"sebi",
     r"fpis?", r"fiis?", r"diis?", r"credit", r"debt", r"loans?", r"payrolls?",
     r"unemployment", r"pmi", r"exports?", r"imports?", r"manufacturing",
-    r"morning bid", r"valuations?", r"analysts?", r"brokerage", r"target price", r"upper circuit",
+    r"fixed income", r"gilts?", r"g-?secs?", r"debentures?", r"ncds?", r"sovereign", r"coupon", r"bunds?", r"jgbs?", r"t-bills?", r"sukuk", r"morning bid", r"valuations?", r"analysts?", r"brokerage", r"target price", r"upper circuit",
 ]
 FINANCE_RE = re.compile(r"\b(?:" + "|".join(FINANCE_TERMS) + r")\b", re.IGNORECASE)
 
@@ -165,6 +165,54 @@ def fetch_india_rss() -> list[dict]:
     return unique[:PER_SECTION * 2]
 
 
+# ---- Fixed income & bond news (Google News search feeds) -------------------
+BOND_FEEDS = {
+    "india": ("Google News - India bonds",
+              "https://news.google.com/rss/search?q=India+bond+yields+OR+G-sec+OR+%22corporate+bonds%22+OR+%22fixed+income%22+when:1d&hl=en-IN&gl=IN&ceid=IN:en"),
+    "global": ("Google News - Global bonds",
+               "https://news.google.com/rss/search?q=Treasury+yields+OR+%22bond+market%22+OR+%22fixed+income%22+OR+gilts+when:1d&hl=en-US&gl=US&ceid=US:en"),
+}
+
+
+def fetch_bond_news(which: str) -> list[dict]:
+    label, url = BOND_FEEDS[which]
+    feed = feedparser.parse(url)
+    items = []
+    for e in feed.entries:
+        parsed = e.get("published_parsed") or e.get("updated_parsed")
+        if not parsed:
+            continue
+        ts = time.mktime(parsed)
+        title = e.get("title", "").strip()
+        if not is_recent(ts) or not is_finance(title):
+            continue
+        pub = ""
+        src = e.get("source")
+        if isinstance(src, dict):
+            pub = src.get("title", "")
+        items.append({
+            "headline": title,
+            "summary": "",           # Google summaries are just related links
+            "source": pub or label,
+            "url": e.get("link", ""),
+            "image": "",
+            "ts": ts,
+        })
+    print(f"  {label}: {len(items)} recent items")
+    return items
+
+
+def merge(primary: list[dict], extra: list[dict], cap: int) -> list[dict]:
+    """Combine two lists, drop duplicate headlines, newest first, keep `cap`."""
+    seen, out = set(), []
+    for it in sorted(primary + extra, key=lambda x: x["ts"], reverse=True):
+        key = re.sub(r"\W+", "", it["headline"].lower())[:50]
+        if key and key not in seen:
+            seen.add(key)
+            out.append(it)
+    return out[:cap]
+
+
 def show(title: str, items: list[dict]) -> None:
     print(f"\n=== {title} ({len(items)}) ===")
     for i, it in enumerate(items, 1):
@@ -181,6 +229,10 @@ def main() -> None:
 
     print("Fetching Indian RSS feeds...")
     india_news = fetch_india_rss()
+
+    print("Fetching bond and fixed income news...")
+    global_news = merge(global_news, fetch_bond_news("global"), PER_SECTION + 5)
+    india_news = merge(india_news, fetch_bond_news("india"), PER_SECTION * 2 + 6)
 
     show("GLOBAL MARKETS", global_news)
     show("INDIA: MARKETS & ECONOMY", india_news)
