@@ -2,8 +2,10 @@ name: Publish The Market Chronicle
 
 on:
   schedule:
-    - cron: "30 1 * * *"
-  workflow_dispatch:
+    - cron: "30 21 * * *"     # 03:00 AM IST
+    - cron: "30 23 * * *"     # 05:00 AM IST
+    - cron: "30 1 * * *"      # 07:00 AM IST
+  workflow_dispatch:           # lets you run it manually from the Actions tab
 
 permissions:
   contents: read
@@ -21,25 +23,32 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     env:
-      TZ: Asia/Kolkata
+      TZ: Asia/Kolkata                       # so dates and times show in IST
       FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
+
       - run: pip install -r requirements.txt
+
       - name: Fetch news
         run: python fetch_news.py
+
       - name: Build front page
         run: |
           python build_paper.py
           mkdir site
           cp index.html site/index.html
+
       - uses: actions/configure-pages@v5
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
+
       - id: deployment
         uses: actions/deploy-pages@v4
